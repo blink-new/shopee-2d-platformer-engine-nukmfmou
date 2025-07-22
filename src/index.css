@@ -1,0 +1,105 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: 222.2 84% 4.9%;
+  --foreground: 210 40% 98%;
+  --card: 222.2 84% 4.9%;
+  --card-foreground: 210 40% 98%;
+  --popover: 222.2 84% 4.9%;
+  --popover-foreground: 210 40% 98%;
+  --primary: 160 84% 39%;
+  --primary-foreground: 355 7% 97%;
+  --secondary: 217.2 32.6% 17.5%;
+  --secondary-foreground: 210 40% 98%;
+  --muted: 217.2 32.6% 17.5%;
+  --muted-foreground: 215 20.2% 65.1%;
+  --accent: 262 83% 58%;
+  --accent-foreground: 210 40% 98%;
+  --destructive: 0 62.8% 30.6%;
+  --destructive-foreground: 210 40% 98%;
+  --border: 217.2 32.6% 17.5%;
+  --input: 217.2 32.6% 17.5%;
+  --ring: 160 84% 39%;
+  --radius: 0.5rem;
+}
+
+* {
+  border-color: hsl(var(--border));
+}
+
+body {
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+  font-family: Inter, sans-serif;
+}
+
+/* Game-specific styling */
+.pixel-font {
+  font-family: 'JetBrains Mono', 'Courier New', monospace;
+  image-rendering: pixelated;
+}
+
+/* Shopify brand colors */
+.shopify-green {
+  color: #00D4AA;
+}
+
+.shopify-purple {
+  color: #7C3AED;
+}
+
+/* Legacy platform colors */
+.magento-orange {
+  color: #FF6B35;
+}
+
+.salesforce-blue {
+  color: #00A1E0;
+}
+
+.woocommerce-purple {
+  color: #7F54B3;
+}
+
+/* Game animations */
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+.float-animation {
+  animation: float 2s ease-in-out infinite;
+}
+
+@keyframes glow {
+  0%, 100% { box-shadow: 0 0 5px hsl(var(--primary)); }
+  50% { box-shadow: 0 0 20px hsl(var(--primary)), 0 0 30px hsl(var(--primary)); }
+}
+
+.glow-animation {
+  animation: glow 2s ease-in-out infinite;
+}
+
+/* Retro game styling */
+.retro-border {
+  border: 3px solid;
+  border-image: linear-gradient(45deg, #00D4AA, #7C3AED) 1;
+}
+
+.scanlines::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgb(0 212 170 / 3%) 2px,
+    rgb(0 212 170 / 3%) 4px
+  );
+  pointer-events: none;
+}

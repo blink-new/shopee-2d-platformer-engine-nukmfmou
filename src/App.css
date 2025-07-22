@@ -1,0 +1,61 @@
+#root {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 2rem;
+  text-align: center;
+}
+
+.app {
+  width: 100%;
+  min-height: 100vh;
+}
+
+/* Pixel art styling */
+canvas {
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+/* Game-specific animations */
+@keyframes pulse {
+  0%, 100% { opacity: 100%; }
+  50% { opacity: 70%; }
+}
+
+.token-pulse {
+  animation: pulse 1s infinite;
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-2px); }
+  75% { transform: translateX(2px); }
+}
+
+.screen-shake {
+  animation: shake 0.5s ease-in-out;
+}
+
+/* Retro gaming font styling */
+.game-font {
+  font-family: 'JetBrains Mono', 'Courier New', monospace;
+  font-weight: bold;
+  text-shadow: 2px 2px 0 rgb(0 0 0 / 50%);
+}
+
+/* Level-specific color themes */
+.magento-theme {
+  background: linear-gradient(135deg, #FF6B35, #F7931E);
+}
+
+.salesforce-theme {
+  background: linear-gradient(135deg, #00A1E0, #0070D2);
+}
+
+.woocommerce-theme {
+  background: linear-gradient(135deg, #7F54B3, #96588A);
+}
+
+.shopify-theme {
+  background: linear-gradient(135deg, #00D4AA, #7AB55C);
+}
