@@ -484,6 +484,8 @@ const GameEngine: React.FC = () => {
           (newPlayer.coyoteTime > 0 || (!newPlayer.hasDoubleJumped && newPlayer.canDoubleJump))) {
         if (newPlayer.coyoteTime <= 0 && newPlayer.canDoubleJump) {
           newPlayer.hasDoubleJumped = true;
+          // Double jump particles
+          addParticles(newPlayer.x + newPlayer.width/2, newPlayer.y + newPlayer.height, 4, 'spark', '#00D4AA');
         }
         newPlayer.velocityY = JUMP_FORCE;
         newPlayer.onGround = false;
@@ -498,13 +500,13 @@ const GameEngine: React.FC = () => {
         newPlayer.velocityY *= 0.5;
       }
 
-      // Dashing
-      if (keys.has('shift') && newPlayer.dashCooldown <= 0) {
+      // Dashing - only trigger once per key press
+      if (keys.has('shift') && newPlayer.dashCooldown <= 0 && newPlayer.state !== 'dashing') {
         newPlayer.velocityX = newPlayer.facing === 'right' ? DASH_SPEED : -DASH_SPEED;
         newPlayer.state = 'dashing';
         newPlayer.dashCooldown = 60;
-        // Only add particles during dash, not constantly
-        addParticles(newPlayer.x + newPlayer.width/2, newPlayer.y + newPlayer.height/2, 3, 'spark', '#7C3AED');
+        // Add particles only once when dash starts
+        addParticles(newPlayer.x + newPlayer.width/2, newPlayer.y + newPlayer.height/2, 5, 'spark', '#7C3AED');
       }
 
       // Apply gravity
@@ -533,38 +535,53 @@ const GameEngine: React.FC = () => {
         }
 
         if (checkCollision(newPlayer, platform)) {
-          // Landing on top of platform
-          if (newPlayer.velocityY > 0 && newPlayer.y < platform.y) {
+          // Landing on top of platform (most important collision)
+          if (newPlayer.velocityY > 0 && newPlayer.y + newPlayer.height - 10 < platform.y) {
             newPlayer.y = platform.y - newPlayer.height;
             newPlayer.velocityY = 0;
             newPlayer.onGround = true;
             
-            // Landing particles
+            // Landing particles (only once when landing)
             if (!wasOnGround) {
-              addParticles(newPlayer.x + newPlayer.width/2, newPlayer.y + newPlayer.height, 5, 'dust', '#8B4513');
+              addParticles(newPlayer.x + newPlayer.width/2, newPlayer.y + newPlayer.height, 3, 'dust', '#8B4513');
             }
           }
           // Hitting platform from below
-          else if (newPlayer.velocityY < 0 && newPlayer.y > platform.y) {
+          else if (newPlayer.velocityY < 0 && newPlayer.y > platform.y + platform.height - 10) {
             newPlayer.y = platform.y + platform.height;
             newPlayer.velocityY = 0;
           }
-          // Side collision
-          else if (newPlayer.velocityX > 0) {
+          // Side collision - left side
+          else if (newPlayer.velocityX > 0 && newPlayer.x < platform.x) {
             newPlayer.x = platform.x - newPlayer.width;
             newPlayer.velocityX = 0;
-          } else if (newPlayer.velocityX < 0) {
+          } 
+          // Side collision - right side
+          else if (newPlayer.velocityX < 0 && newPlayer.x > platform.x) {
             newPlayer.x = platform.x + platform.width;
             newPlayer.velocityX = 0;
           }
         }
       });
 
-      // Boundary checks
-      if (newPlayer.x < 0) newPlayer.x = 0;
-      if (newPlayer.x + newPlayer.width > CANVAS_WIDTH) newPlayer.x = CANVAS_WIDTH - newPlayer.width;
+      // Boundary checks - keep player on screen
+      if (newPlayer.x < 0) {
+        newPlayer.x = 0;
+        newPlayer.velocityX = 0;
+      }
+      if (newPlayer.x + newPlayer.width > CANVAS_WIDTH) {
+        newPlayer.x = CANVAS_WIDTH - newPlayer.width;
+        newPlayer.velocityX = 0;
+      }
+      
+      // Prevent player from going above screen
+      if (newPlayer.y < 0) {
+        newPlayer.y = 0;
+        newPlayer.velocityY = 0;
+      }
+      
+      // Player fell off the bottom of the world
       if (newPlayer.y > CANVAS_HEIGHT) {
-        // Player fell off the world
         newPlayer.health -= 1;
         newPlayer.x = 100;
         newPlayer.y = 400;
@@ -579,6 +596,15 @@ const GameEngine: React.FC = () => {
       // Update cooldowns and timers
       if (newPlayer.dashCooldown > 0) newPlayer.dashCooldown--;
       if (newPlayer.invulnerable > 0) newPlayer.invulnerable--;
+      
+      // Reset dash state when dash cooldown is mostly done
+      if (newPlayer.state === 'dashing' && newPlayer.dashCooldown < 45) {
+        if (newPlayer.onGround) {
+          newPlayer.state = Math.abs(newPlayer.velocityX) > 0.5 ? 'running' : 'idle';
+        } else {
+          newPlayer.state = 'jumping';
+        }
+      }
 
       return newPlayer;
     });
@@ -713,7 +739,10 @@ const GameEngine: React.FC = () => {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Apply screen shake
+    // Clear any previous transforms
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+
+    // Apply screen shake only
     if (gameState.screenShake > 0) {
       ctx.save();
       ctx.translate(
@@ -1375,7 +1404,7 @@ const GameEngine: React.FC = () => {
         const lean = 3;
         ctx.translate(player.facing === 'right' ? lean : -lean, 0);
         
-        // Speed lines
+        // Speed lines (visual only, no particles)
         ctx.strokeStyle = '#7C3AED';
         ctx.lineWidth = 1;
         for (let i = 0; i < 4; i++) {
