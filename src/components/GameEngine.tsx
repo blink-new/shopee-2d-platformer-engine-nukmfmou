@@ -503,7 +503,8 @@ const GameEngine: React.FC = () => {
         newPlayer.velocityX = newPlayer.facing === 'right' ? DASH_SPEED : -DASH_SPEED;
         newPlayer.state = 'dashing';
         newPlayer.dashCooldown = 60;
-        addParticles(newPlayer.x + newPlayer.width/2, newPlayer.y + newPlayer.height/2, 8, 'spark', '#7C3AED');
+        // Only add particles during dash, not constantly
+        addParticles(newPlayer.x + newPlayer.width/2, newPlayer.y + newPlayer.height/2, 3, 'spark', '#7C3AED');
       }
 
       // Apply gravity
@@ -733,53 +734,139 @@ const GameEngine: React.FC = () => {
     ctx.fillStyle = bgColors[gameState.currentLevel];
     ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
-    // Draw parallax background layers
+    // Draw parallax background layers with legacy platform landscape
     backgroundLayers.forEach((layer, layerIndex) => {
       layer.elements.forEach(element => {
         const x = element.x + layer.x;
         const y = element.y;
         
         if (element.type === 'terminal') {
-          // Flickering terminal
+          // Cracked server towers with legacy labels
           const flicker = Math.sin(element.animationFrame * 0.3) > 0.5;
-          ctx.fillStyle = flicker ? '#00FF00' : '#004400';
-          ctx.fillRect(x, y, 40, 30);
-          ctx.fillStyle = '#000';
-          ctx.fillRect(x + 2, y + 2, 36, 26);
-          if (flicker) {
-            ctx.fillStyle = '#00FF00';
-            ctx.fillRect(x + 4, y + 4, 32, 4);
-            ctx.fillRect(x + 4, y + 10, 24, 4);
-            ctx.fillRect(x + 4, y + 16, 28, 4);
+          
+          // Server tower base
+          ctx.fillStyle = layerIndex === 0 ? '#4A4A4A' : '#666';
+          ctx.fillRect(x, y, 40, 60);
+          
+          // Cracks in the server
+          ctx.strokeStyle = '#222';
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(x + 10, y);
+          ctx.lineTo(x + 8, y + 60);
+          ctx.moveTo(x + 25, y + 10);
+          ctx.lineTo(x + 30, y + 50);
+          ctx.stroke();
+          
+          // Flickering screen
+          ctx.fillStyle = flicker ? '#FF4444' : '#440000';
+          ctx.fillRect(x + 5, y + 10, 30, 20);
+          
+          // Legacy labels
+          ctx.fillStyle = '#CCCCCC';
+          ctx.font = '8px monospace';
+          if (layerIndex === 0) {
+            ctx.fillText('Magento 1.9', x + 2, y + 45);
+          } else {
+            ctx.fillText('API v20', x + 8, y + 45);
           }
+          
+          // Error signs
+          if (flicker) {
+            ctx.fillStyle = '#FF0000';
+            ctx.font = 'bold 10px monospace';
+            ctx.fillText('404', x + 15, y + 22);
+          }
+          
         } else if (element.type === 'code') {
-          // Falling code blocks
-          const codeY = (y + element.animationFrame * 2) % CANVAS_HEIGHT;
-          ctx.fillStyle = '#00AA00';
-          ctx.font = '12px monospace';
-          ctx.fillText('01010101', x, codeY);
-          ctx.fillText('11001100', x, codeY + 15);
+          // Matrix-style code rain with legacy elements
+          const codeY = (y + element.animationFrame * 1.5) % CANVAS_HEIGHT;
+          ctx.fillStyle = layerIndex === 0 ? '#004400' : '#006600';
+          ctx.font = '10px monospace';
+          
+          // Falling code snippets
+          const codeSnippets = ['<?php', 'SELECT *', 'UPDATE', 'NULL', 'ERROR', 'DEPRECATED'];
+          const snippet = codeSnippets[Math.floor(element.animationFrame / 20) % codeSnippets.length];
+          ctx.fillText(snippet, x, codeY);
+          ctx.fillText('01010101', x, codeY + 12);
+          
+          // Broken plugin icons falling
+          if (element.animationFrame % 40 < 20) {
+            ctx.fillStyle = '#FF6B35';
+            ctx.fillRect(x + 20, codeY - 5, 8, 8);
+            ctx.fillStyle = '#FFF';
+            ctx.font = '6px monospace';
+            ctx.fillText('!', x + 22, codeY);
+          }
+          
         } else if (element.type === 'wire') {
-          // Twitching wires
-          const twitch = Math.sin(element.animationFrame * 0.5) * 2;
-          ctx.strokeStyle = '#666';
-          ctx.lineWidth = 2;
+          // Tangled CRM wires and cables
+          const twitch = Math.sin(element.animationFrame * 0.5) * 3;
+          const pulse = Math.sin(element.animationFrame * 0.2) * 0.5 + 0.5;
+          
+          // Main wire
+          ctx.strokeStyle = `rgba(102, 102, 102, ${0.7 + pulse * 0.3})`;
+          ctx.lineWidth = 3;
           ctx.beginPath();
           ctx.moveTo(x, y);
-          ctx.quadraticCurveTo(x + 20 + twitch, y + 10, x + 40, y + 20);
+          ctx.quadraticCurveTo(x + 20 + twitch, y + 15, x + 40, y + 30);
+          ctx.quadraticCurveTo(x + 60 - twitch, y + 45, x + 80, y + 20);
           ctx.stroke();
-        } else if (element.type === 'cloud') {
-          // Drifting clouds
-          const cloudX = (x + element.animationFrame * 0.5) % (CANVAS_WIDTH + 60);
-          ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+          
+          // Connector nodes
+          ctx.fillStyle = pulse > 0.7 ? '#00A1E0' : '#004080';
           ctx.beginPath();
-          ctx.arc(cloudX, y, 15, 0, Math.PI * 2);
-          ctx.arc(cloudX + 15, y, 20, 0, Math.PI * 2);
-          ctx.arc(cloudX + 30, y, 15, 0, Math.PI * 2);
+          ctx.arc(x + 20, y + 15, 3, 0, Math.PI * 2);
+          ctx.arc(x + 60, y + 45, 3, 0, Math.PI * 2);
           ctx.fill();
+          
+        } else if (element.type === 'cloud') {
+          // Glitchy UI clouds and error pop-ups
+          const cloudX = (x + element.animationFrame * 0.3) % (CANVAS_WIDTH + 80);
+          const glitch = element.animationFrame % 60 < 5;
+          
+          if (glitch) {
+            // Glitched appearance
+            ctx.fillStyle = 'rgba(255, 100, 100, 0.4)';
+            ctx.fillRect(cloudX - 2, y - 2, 64, 24);
+          }
+          
+          // Main cloud shape (UI modal)
+          ctx.fillStyle = 'rgba(200, 200, 200, 0.6)';
+          ctx.fillRect(cloudX, y, 60, 20);
+          
+          // Modal content
+          ctx.fillStyle = '#333';
+          ctx.font = '8px monospace';
+          ctx.fillText('Processing...', cloudX + 5, y + 12);
+          
+          // Loading spinner
+          const spinAngle = (element.animationFrame * 0.3) % (Math.PI * 2);
+          ctx.strokeStyle = '#666';
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.arc(cloudX + 50, y + 10, 4, spinAngle, spinAngle + Math.PI);
+          ctx.stroke();
         }
       });
     });
+    
+    // Add Shopify portal glow in the distance
+    if (player.x > 800) {
+      const portalGlow = Math.sin(Date.now() * 0.005) * 0.3 + 0.7;
+      const gradient = ctx.createRadialGradient(1175, 525, 0, 1175, 525, 100);
+      gradient.addColorStop(0, `rgba(0, 212, 170, ${portalGlow * 0.3})`);
+      gradient.addColorStop(1, 'rgba(0, 212, 170, 0)');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(1075, 425, 200, 200);
+      
+      // Clean UI elements sliding in
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+      const slideOffset = Math.sin(Date.now() * 0.003) * 10;
+      ctx.fillRect(1100 + slideOffset, 450, 40, 8);
+      ctx.fillRect(1110 - slideOffset, 470, 60, 8);
+      ctx.fillRect(1105 + slideOffset * 0.5, 490, 50, 8);
+    }
 
     // Draw platforms with pixel art styling
     platforms.forEach(platform => {
@@ -847,77 +934,235 @@ const GameEngine: React.FC = () => {
         const frame = enemy.animationFrame;
         
         if (enemy.type === 'magentoBot') {
-          // Rusty orange robot
-          ctx.fillStyle = '#FF6B35';
+          // Magento Bot - Rust Engine of Chaos
+          // Main body - boxy and modular like plugins jammed together
+          ctx.fillStyle = '#CD853F'; // Bronze/rust color
           ctx.fillRect(enemy.x, enemy.y, enemy.width, enemy.height);
           
-          // Robot details
-          ctx.fillStyle = '#CC5500';
-          ctx.fillRect(enemy.x + 4, enemy.y + 4, 24, 8); // Head
-          ctx.fillRect(enemy.x + 8, enemy.y + 16, 16, 12); // Body
+          // Rust patches and decay
+          ctx.fillStyle = '#8B4513';
+          ctx.fillRect(enemy.x + 2, enemy.y + 2, 6, 6);
+          ctx.fillRect(enemy.x + 24, enemy.y + 8, 4, 8);
+          ctx.fillRect(enemy.x + 8, enemy.y + 24, 8, 4);
           
-          // Eyes
-          ctx.fillStyle = enemy.state === 'damage' ? '#FF0000' : '#00FF00';
-          ctx.fillRect(enemy.x + 8, enemy.y + 6, 4, 4);
-          ctx.fillRect(enemy.x + 20, enemy.y + 6, 4, 4);
+          // Head module
+          ctx.fillStyle = '#FF6B35'; // Corrupted orange
+          ctx.fillRect(enemy.x + 6, enemy.y + 2, 20, 12);
           
-          // Hanging wires
-          ctx.strokeStyle = '#666';
-          ctx.lineWidth = 1;
-          ctx.beginPath();
-          ctx.moveTo(enemy.x + 2, enemy.y + 20);
-          ctx.lineTo(enemy.x + 2 + Math.sin(frame * 0.3) * 2, enemy.y + 30);
-          ctx.moveTo(enemy.x + 30, enemy.y + 20);
-          ctx.lineTo(enemy.x + 30 + Math.sin(frame * 0.3 + 1) * 2, enemy.y + 30);
-          ctx.stroke();
+          // Body segments (plugin modules)
+          ctx.fillStyle = '#A0522D';
+          ctx.fillRect(enemy.x + 4, enemy.y + 16, 10, 8);
+          ctx.fillStyle = '#D2691E';
+          ctx.fillRect(enemy.x + 18, enemy.y + 16, 10, 8);
           
-        } else if (enemy.type === 'salesforceKraken') {
-          // Cloudy blue tentacle monster
-          ctx.fillStyle = '#00A1E0';
-          
-          // Main body
-          ctx.beginPath();
-          ctx.arc(enemy.x + enemy.width/2, enemy.y + 12, 12, 0, Math.PI * 2);
-          ctx.fill();
-          
-          // Tentacles
-          for (let i = 0; i < 4; i++) {
-            const tentacleX = enemy.x + 8 + i * 8;
-            const wave = Math.sin(frame * 0.2 + i) * 3;
-            ctx.beginPath();
-            ctx.moveTo(tentacleX, enemy.y + 20);
-            ctx.quadraticCurveTo(tentacleX + wave, enemy.y + 30, tentacleX, enemy.y + 40);
-            ctx.lineWidth = 3;
-            ctx.strokeStyle = '#0080C0';
-            ctx.stroke();
+          // Glitched LED eyes with syntax errors
+          if (enemy.state === 'damage' || Math.random() < 0.1) {
+            ctx.fillStyle = '#FF0000';
+            ctx.font = '6px monospace';
+            ctx.fillText('<?', enemy.x + 8, enemy.y + 8);
+            ctx.fillText('!', enemy.x + 20, enemy.y + 8);
+          } else {
+            ctx.fillStyle = '#00FF00';
+            ctx.fillRect(enemy.x + 8, enemy.y + 6, 3, 3);
+            ctx.fillRect(enemy.x + 20, enemy.y + 6, 3, 3);
           }
           
-          // Floating login tokens
-          ctx.fillStyle = '#FFFFFF';
-          ctx.font = '8px monospace';
-          ctx.fillText('API', enemy.x + 5, enemy.y + 8);
-          ctx.fillText('JWT', enemy.x + 20, enemy.y + 8);
+          // Extension cables and failing code injectors (arms)
+          ctx.strokeStyle = '#666';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          // Left arm with cable
+          ctx.moveTo(enemy.x, enemy.y + 18);
+          ctx.lineTo(enemy.x - 4 + Math.sin(frame * 0.3) * 2, enemy.y + 22);
+          // Right arm with injector
+          ctx.moveTo(enemy.x + 32, enemy.y + 18);
+          ctx.lineTo(enemy.x + 36 + Math.sin(frame * 0.3 + 1) * 2, enemy.y + 22);
+          ctx.stroke();
+          
+          // Trailing broken script tags
+          if (frame % 20 < 10) {
+            ctx.fillStyle = '#666';
+            ctx.font = '8px monospace';
+            ctx.fillText('</>', enemy.x - 10, enemy.y + 30);
+          }
+          
+          // Memory leak warning (random reboots)
+          if (enemy.state === 'damage') {
+            ctx.fillStyle = '#FF0000';
+            ctx.font = '6px monospace';
+            ctx.fillText('MEM LEAK', enemy.x + 2, enemy.y - 2);
+          }
+          
+        } else if (enemy.type === 'salesforceKraken') {
+          // Salesforce Kraken - CRM Tentacle Monster
+          const floatY = enemy.y + Math.sin(frame * 0.1) * 2;
+          
+          // Translucent cloud-like body
+          const bodyAlpha = 0.7 + Math.sin(frame * 0.15) * 0.2;
+          ctx.fillStyle = `rgba(0, 161, 224, ${bodyAlpha})`;
+          
+          // Main body - no solid form, segmented cloud
+          ctx.beginPath();
+          ctx.arc(enemy.x + enemy.width/2, floatY + 12, 15, 0, Math.PI * 2);
+          ctx.fill();
+          
+          // Icy white highlights
+          ctx.fillStyle = `rgba(255, 255, 255, ${bodyAlpha * 0.8})`;
+          ctx.beginPath();
+          ctx.arc(enemy.x + enemy.width/2 - 4, floatY + 8, 6, 0, Math.PI * 2);
+          ctx.fill();
+          
+          // Hollow eyes with spinning API rate limit dials
+          ctx.fillStyle = '#000';
+          ctx.beginPath();
+          ctx.arc(enemy.x + 12, floatY + 8, 4, 0, Math.PI * 2);
+          ctx.arc(enemy.x + 28, floatY + 8, 4, 0, Math.PI * 2);
+          ctx.fill();
+          
+          // Spinning rate limit dials inside eyes
+          const dialAngle = (frame * 0.2) % (Math.PI * 2);
+          ctx.strokeStyle = '#FF6B35';
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.arc(enemy.x + 12, floatY + 8, 2, dialAngle, dialAngle + Math.PI);
+          ctx.arc(enemy.x + 28, floatY + 8, 2, dialAngle + Math.PI, dialAngle + Math.PI * 2);
+          ctx.stroke();
+          
+          // Floating segmented tentacles wrapped in API endpoints
+          for (let i = 0; i < 6; i++) {
+            const tentacleX = enemy.x + 4 + i * 6;
+            const wave = Math.sin(frame * 0.15 + i * 0.5) * 4;
+            const glitchFade = Math.sin(frame * 0.1 + i) * 0.3 + 0.7;
+            
+            // Tentacle segments
+            ctx.fillStyle = `rgba(0, 128, 192, ${glitchFade})`;
+            for (let seg = 0; seg < 3; seg++) {
+              const segY = floatY + 20 + seg * 8 + wave;
+              ctx.fillRect(tentacleX, segY, 4, 6);
+              
+              // API endpoint labels on tentacles
+              if (seg === 1 && i % 2 === 0) {
+                ctx.fillStyle = '#FFF';
+                ctx.font = '6px monospace';
+                ctx.fillText(i < 3 ? 'API' : 'JWT', tentacleX - 2, segY + 4);
+                ctx.fillStyle = `rgba(0, 128, 192, ${glitchFade})`;
+              }
+            }
+          }
+          
+          // Login tokens and permissions pop-ups floating around
+          const tokenFloat = Math.sin(frame * 0.12) * 3;
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+          ctx.fillRect(enemy.x - 5, floatY + 5 + tokenFloat, 12, 8);
+          ctx.fillRect(enemy.x + 35, floatY + 15 - tokenFloat, 12, 8);
+          
+          ctx.fillStyle = '#333';
+          ctx.font = '6px monospace';
+          ctx.fillText('OAuth', enemy.x - 4, floatY + 10 + tokenFloat);
+          ctx.fillText('401', enemy.x + 36, floatY + 20 - tokenFloat);
+          
+          // Damage animation - shrink and show "401 Unauthorized"
+          if (enemy.state === 'damage') {
+            ctx.fillStyle = '#FF0000';
+            ctx.font = '8px monospace';
+            ctx.fillText('401 UNAUTHORIZED', enemy.x - 10, floatY - 5);
+          }
           
         } else if (enemy.type === 'wooZombie') {
-          // Purple zombie with plugin blocks
-          ctx.fillStyle = '#7F54B3';
+          // WooZombie - Broken Plugin Undead
+          // Main body - lopsided and stitched together
+          ctx.fillStyle = '#7F54B3'; // Lavender base
           ctx.fillRect(enemy.x, enemy.y, enemy.width, enemy.height);
           
-          // Zombie details
+          // Dead grey patches
+          ctx.fillStyle = '#696969';
+          ctx.fillRect(enemy.x + 2, enemy.y + 6, 6, 8);
+          ctx.fillRect(enemy.x + 16, enemy.y + 18, 8, 6);
+          ctx.fillRect(enemy.x + 4, enemy.y + 28, 6, 4);
+          
+          // Head - lopsided
           ctx.fillStyle = '#6B4C93';
-          ctx.fillRect(enemy.x + 4, enemy.y + 4, 20, 12); // Head
-          ctx.fillRect(enemy.x + 6, enemy.y + 20, 16, 12); // Body
+          ctx.fillRect(enemy.x + 3, enemy.y + 2, 18, 14); // Slightly off-center head
           
-          // Plugin blocks on back
+          // Body segments
+          ctx.fillStyle = '#8A2BE2';
+          ctx.fillRect(enemy.x + 5, enemy.y + 18, 14, 10);
+          
+          // Plugin boxes sticking out (Yoast SEO, Jetpack, Contact Form 7)
           ctx.fillStyle = '#9966CC';
-          ctx.fillRect(enemy.x + 22, enemy.y + 8, 6, 6);
-          ctx.fillRect(enemy.x + 24, enemy.y + 16, 4, 8);
+          // Yoast SEO plugin
+          ctx.fillRect(enemy.x + 22, enemy.y + 6, 8, 8);
+          ctx.fillStyle = '#FFF';
+          ctx.font = '6px monospace';
+          ctx.fillText('Y', enemy.x + 24, enemy.y + 11);
           
-          // Lurching animation
-          const lurch = frame % 40 < 20 ? 1 : 0;
+          // Jetpack plugin
+          ctx.fillStyle = '#32CD32';
+          ctx.fillRect(enemy.x + 24, enemy.y + 16, 6, 10);
+          ctx.fillStyle = '#FFF';
+          ctx.fillText('J', enemy.x + 25, enemy.y + 22);
+          
+          // Contact Form 7 plugin
+          ctx.fillStyle = '#FF6347';
+          ctx.fillRect(enemy.x - 2, enemy.y + 12, 6, 8);
+          ctx.fillStyle = '#FFF';
+          ctx.fillText('7', enemy.x - 1, enemy.y + 17);
+          
+          // Dead pixel eyes with loading spinners
+          ctx.fillStyle = '#000';
+          ctx.fillRect(enemy.x + 8, enemy.y + 8, 3, 3);
+          ctx.fillRect(enemy.x + 16, enemy.y + 8, 3, 3);
+          
+          // Loading spinners in eyes
+          const spinAngle = (frame * 0.3) % (Math.PI * 2);
+          ctx.strokeStyle = '#32CD32';
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.arc(enemy.x + 9, enemy.y + 9, 1, spinAngle, spinAngle + Math.PI);
+          ctx.arc(enemy.x + 17, enemy.y + 9, 1, spinAngle + Math.PI, spinAngle + Math.PI * 2);
+          ctx.stroke();
+          
+          // Lurching animation with delayed jump
+          const lurchCycle = frame % 60;
+          let lurchOffset = 0;
+          if (lurchCycle < 20) {
+            lurchOffset = 1;
+          } else if (lurchCycle >= 40 && lurchCycle < 45) {
+            lurchOffset = -2; // Delayed jump
+          }
+          
+          // Feet
           ctx.fillStyle = '#4A4A4A';
-          ctx.fillRect(enemy.x + 2 + lurch, enemy.y + 32, 8, 4); // Left foot
-          ctx.fillRect(enemy.x + 18 - lurch, enemy.y + 32, 8, 4); // Right foot
+          ctx.fillRect(enemy.x + 2 + lurchOffset, enemy.y + 32, 8, 4); // Left foot
+          ctx.fillRect(enemy.x + 18 - lurchOffset, enemy.y + 32, 8, 4); // Right foot
+          
+          // Glitch green accents
+          if (frame % 30 < 5) {
+            ctx.fillStyle = '#32CD32';
+            ctx.fillRect(enemy.x + 1, enemy.y + 1, 2, 2);
+            ctx.fillRect(enemy.x + 25, enemy.y + 3, 2, 2);
+          }
+          
+          // Moaning and shaking effect
+          if (Math.random() < 0.05) {
+            const shake = Math.random() * 2 - 1;
+            ctx.translate(shake, shake);
+          }
+          
+          // Death animation - collapse into deprecated code
+          if (enemy.state === 'damage') {
+            ctx.fillStyle = '#666';
+            ctx.font = '8px monospace';
+            ctx.fillText('DEPRECATED', enemy.x - 5, enemy.y - 5);
+            
+            // Spinning WordPress wheels
+            const wheelAngle = (frame * 0.5) % (Math.PI * 2);
+            ctx.strokeStyle = '#21759B';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(enemy.x + 14, enemy.y + 16, 6, wheelAngle, wheelAngle + Math.PI);
+            ctx.stroke();
+          }
         }
       }
     });
@@ -973,84 +1218,197 @@ const GameEngine: React.FC = () => {
         ctx.globalAlpha = 0.5;
       }
       
-      // Main body - blue jumpsuit
-      ctx.fillStyle = '#4A90E2';
-      ctx.fillRect(player.x + 4, player.y + 16, 24, 24);
+      // Shopee - The Shopify Hero with detailed pixel art
       
-      // Head
-      ctx.fillStyle = '#FFE4B5';
+      // Green hoodie shaped like Shopify shopping bag (rounded top, slightly tilted)
+      ctx.fillStyle = '#00D4AA'; // Shopify green
+      ctx.fillRect(player.x + 5, player.y + 6, 22, 14); // Main hoodie body
+      
+      // Rounded top of hoodie (shopping bag handle reference)
+      ctx.fillRect(player.x + 7, player.y + 4, 18, 4);
+      ctx.fillRect(player.x + 9, player.y + 2, 14, 4);
+      
+      // Soft green-to-white gradient effect on hoodie
+      ctx.fillStyle = '#4DFFCD'; // Lighter green highlight
+      ctx.fillRect(player.x + 6, player.y + 7, 20, 3);
+      ctx.fillRect(player.x + 8, player.y + 4, 16, 2);
+      
+      // Head - large expressive design
+      ctx.fillStyle = '#FFE4B5'; // Skin tone
       ctx.fillRect(player.x + 8, player.y + 8, 16, 16);
       
-      // Green hoodie
+      // Helmet-like hood referencing shopping bag handle
       ctx.fillStyle = '#00D4AA';
-      ctx.fillRect(player.x + 6, player.y + 6, 20, 12);
+      ctx.fillRect(player.x + 6, player.y + 6, 20, 8);
+      ctx.fillStyle = '#4DFFCD';
+      ctx.fillRect(player.x + 7, player.y + 7, 18, 2); // Hood highlight
       
-      // Cape with S logo
-      ctx.fillStyle = '#00D4AA';
-      ctx.fillRect(player.x + (player.facing === 'right' ? 28 : 0), player.y + 8, 4, 16);
+      // Signature white 'S' on chest/hood
       ctx.fillStyle = 'white';
-      ctx.font = 'bold 8px monospace';
+      ctx.font = 'bold 10px monospace';
       ctx.textAlign = 'center';
-      ctx.fillText('S', player.x + (player.facing === 'right' ? 30 : 2), player.y + 18);
+      ctx.fillText('S', player.x + 16, player.y + 16);
       
-      // Eyes
+      // Large expressive eyes (white with black pupils)
+      ctx.fillStyle = 'white';
+      ctx.fillRect(player.x + 9, player.y + 11, 4, 4);
+      ctx.fillRect(player.x + 19, player.y + 11, 4, 4);
+      
+      // Black pupils with personality
       if (player.state === 'damage') {
+        // Closed eyes (X shape for damage)
         ctx.fillStyle = '#000';
-        ctx.fillRect(player.x + 10, player.y + 12, 2, 1); // Closed eyes
-        ctx.fillRect(player.x + 18, player.y + 12, 2, 1);
+        ctx.fillRect(player.x + 10, player.y + 12, 1, 1);
+        ctx.fillRect(player.x + 12, player.y + 12, 1, 1);
+        ctx.fillRect(player.x + 11, player.y + 13, 1, 1);
+        ctx.fillRect(player.x + 20, player.y + 12, 1, 1);
+        ctx.fillRect(player.x + 22, player.y + 12, 1, 1);
+        ctx.fillRect(player.x + 21, player.y + 13, 1, 1);
+        
+        // "404" flashes over him
+        if (frame % 10 < 5) {
+          ctx.fillStyle = '#FF0000';
+          ctx.font = 'bold 8px monospace';
+          ctx.fillText('404', player.x + 16, player.y + 4);
+        }
       } else {
         ctx.fillStyle = '#000';
         ctx.fillRect(player.x + 10, player.y + 12, 2, 2);
-        ctx.fillRect(player.x + 18, player.y + 12, 2, 2);
+        ctx.fillRect(player.x + 20, player.y + 12, 2, 2);
       }
       
-      // White sneakers
+      // Slim but heroic build body
+      ctx.fillStyle = '#00D4AA';
+      ctx.fillRect(player.x + 6, player.y + 20, 20, 16);
+      
+      // Body highlights
+      ctx.fillStyle = '#4DFFCD';
+      ctx.fillRect(player.x + 7, player.y + 21, 18, 2);
+      
+      // Cape with S logo (startup founder attitude)
+      if (player.facing === 'right') {
+        ctx.fillStyle = '#00D4AA';
+        ctx.fillRect(player.x + 28, player.y + 10, 4, 18);
+        ctx.fillStyle = '#4DFFCD';
+        ctx.fillRect(player.x + 28, player.y + 11, 3, 2); // Cape highlight
+        ctx.fillStyle = 'white';
+        ctx.font = 'bold 8px monospace';
+        ctx.fillText('S', player.x + 30, player.y + 20);
+      } else {
+        ctx.fillStyle = '#00D4AA';
+        ctx.fillRect(player.x - 4, player.y + 10, 4, 18);
+        ctx.fillStyle = '#4DFFCD';
+        ctx.fillRect(player.x - 3, player.y + 11, 3, 2);
+        ctx.fillStyle = 'white';
+        ctx.font = 'bold 8px monospace';
+        ctx.fillText('S', player.x - 2, player.y + 20);
+      }
+      
+      // White modern-looking sneakers (for speed & clean design)
       ctx.fillStyle = '#FFFFFF';
       ctx.fillRect(player.x + 6, player.y + 40, 8, 8);
       ctx.fillRect(player.x + 18, player.y + 40, 8, 8);
       
+      // Sneaker details (modern design)
+      ctx.fillStyle = '#E0E0E0';
+      ctx.fillRect(player.x + 7, player.y + 41, 6, 2); // Left shoe highlight
+      ctx.fillRect(player.x + 19, player.y + 41, 6, 2); // Right shoe highlight
+      
       // Animation-specific details
       if (player.state === 'idle') {
-        // Typing animation
-        const typing = frame % 60 < 30;
+        // Light bounce
+        const bounce = Math.sin(frame * 0.15) * 1.5;
+        ctx.translate(0, bounce);
+        
+        // Typing animation or scanning UI
+        const typing = frame % 80 < 40;
         if (typing) {
-          ctx.fillStyle = '#666';
-          ctx.fillRect(player.x + 6, player.y + 30, 6, 3);
-          ctx.fillRect(player.x + 20, player.y + 30, 6, 3);
+          // Typing hands
+          ctx.fillStyle = '#FFE4B5';
+          ctx.fillRect(player.x + 4, player.y + 28, 4, 6);
+          ctx.fillRect(player.x + 24, player.y + 28, 4, 6);
+          
+          // UI scanning effect
+          ctx.fillStyle = '#00D4AA';
+          ctx.fillRect(player.x + 8, player.y + 32, 16, 1);
+          if (frame % 20 < 10) {
+            ctx.fillRect(player.x + 10, player.y + 34, 12, 1);
+          }
         }
         
-        // Slight bounce
-        const bounce = Math.sin(frame * 0.1) * 1;
-        ctx.translate(0, bounce);
       } else if (player.state === 'running') {
-        // Arm swing
-        const armSwing = Math.sin(frame * 0.5) * 2;
-        ctx.fillStyle = '#4A90E2';
-        ctx.fillRect(player.x + (player.facing === 'right' ? 2 : 26), player.y + 20 + armSwing, 4, 8);
-        ctx.fillRect(player.x + (player.facing === 'right' ? 26 : 2), player.y + 20 - armSwing, 4, 8);
-      } else if (player.state === 'jumping') {
-        // Arms up, knees bent
-        ctx.fillStyle = '#4A90E2';
-        ctx.fillRect(player.x + 2, player.y + 12, 4, 8); // Left arm up
-        ctx.fillRect(player.x + 26, player.y + 12, 4, 8); // Right arm up
+        // Smooth arm swings, slightly exaggerated lean forward
+        const armSwing = Math.sin(frame * 0.6) * 3;
+        const lean = 1;
+        ctx.translate(player.facing === 'right' ? lean : -lean, 0);
         
-        // Bent knees
-        ctx.fillStyle = '#4A90E2';
-        ctx.fillRect(player.x + 8, player.y + 36, 6, 4);
-        ctx.fillRect(player.x + 18, player.y + 36, 6, 4);
+        ctx.fillStyle = '#FFE4B5';
+        if (player.facing === 'right') {
+          ctx.fillRect(player.x + 2, player.y + 22 + armSwing, 4, 8); // Left arm
+          ctx.fillRect(player.x + 26, player.y + 22 - armSwing, 4, 8); // Right arm
+        } else {
+          ctx.fillRect(player.x + 26, player.y + 22 + armSwing, 4, 8);
+          ctx.fillRect(player.x + 2, player.y + 22 - armSwing, 4, 8);
+        }
+        
+      } else if (player.state === 'jumping') {
+        // Mid-air stretch
+        ctx.translate(0, -2);
+        
+        // Arms up in heroic pose
+        ctx.fillStyle = '#FFE4B5';
+        ctx.fillRect(player.x + 2, player.y + 14, 4, 10); // Left arm up
+        ctx.fillRect(player.x + 26, player.y + 14, 4, 10); // Right arm up
+        
+        // Subtle pixel trail under shoes
+        if (player.velocityY > 0) {
+          ctx.fillStyle = 'rgba(0, 212, 170, 0.6)';
+          ctx.fillRect(player.x + 8, player.y + 50, 2, 4);
+          ctx.fillRect(player.x + 22, player.y + 50, 2, 4);
+          ctx.fillStyle = 'rgba(0, 212, 170, 0.3)';
+          ctx.fillRect(player.x + 9, player.y + 54, 1, 2);
+          ctx.fillRect(player.x + 23, player.y + 54, 1, 2);
+        }
+        
       } else if (player.state === 'dashing') {
         // Leaning forward with speed lines
+        const lean = 3;
+        ctx.translate(player.facing === 'right' ? lean : -lean, 0);
+        
+        // Speed lines
         ctx.strokeStyle = '#7C3AED';
-        ctx.lineWidth = 2;
-        for (let i = 0; i < 3; i++) {
+        ctx.lineWidth = 1;
+        for (let i = 0; i < 4; i++) {
           ctx.beginPath();
-          ctx.moveTo(player.x - 10 - i * 5, player.y + 10 + i * 5);
-          ctx.lineTo(player.x - 5 - i * 5, player.y + 15 + i * 5);
+          const lineX = player.x + (player.facing === 'right' ? -8 - i * 4 : 40 + i * 4);
+          ctx.moveTo(lineX, player.y + 12 + i * 3);
+          ctx.lineTo(lineX + (player.facing === 'right' ? -6 : 6), player.y + 16 + i * 3);
           ctx.stroke();
         }
+        
       } else if (player.state === 'damage') {
+        // Screen glitch effect
+        const glitch = Math.random() * 4 - 2;
+        ctx.translate(glitch, glitch * 0.5);
+        
         // Leaning back
         ctx.translate(player.facing === 'right' ? -2 : 2, 0);
+      }
+      
+      // Victory pose (when reaching goal)
+      if (player.x >= 1140 && player.y >= 450) {
+        // Raised arm holding a "Shopify Token"
+        ctx.fillStyle = '#FFE4B5';
+        ctx.fillRect(player.x + 16, player.y + 2, 4, 12); // Raised arm
+        
+        // Shopify token
+        ctx.fillStyle = '#00D4AA';
+        ctx.beginPath();
+        ctx.arc(player.x + 18, player.y, 6, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = 'white';
+        ctx.font = 'bold 8px monospace';
+        ctx.fillText('S', player.x + 18, player.y + 3);
       }
       
       ctx.globalAlpha = 1;
